@@ -40,11 +40,11 @@
             transform: scale(0.92);
         }
 
-        /* 季節ごとのパステルテーマ */
-        .bg-spring { background-color: #ffe4e6; border-color: #f43f5e; color: #9f1239; }
-        .bg-summer { background-color: #e0f2fe; border-color: #0284c7; color: #075985; }
-        .bg-autumn { background-color: #ffedd5; border-color: #ea580c; color: #9a3412; }
-        .bg-winter { background-color: #f1f5f9; border-color: #64748b; color: #334155; }
+        /* 季節ごとのテーマ（はる:ピンク, なつ:緑, あき:オレンジ, ふゆ:青） */
+        .bg-spring { background-color: #fce7f3 !important; border-color: #ec4899 !important; color: #be185d !important; }
+        .bg-summer { background-color: #dcfce7 !important; border-color: #22c55e !important; color: #15803d !important; }
+        .bg-autumn { background-color: #ffedd5 !important; border-color: #f97316 !important; color: #c2410c !important; }
+        .bg-winter { background-color: #dbeafe !important; border-color: #3b82f6 !important; color: #1d4ed8 !important; }
 
         /* カードの立体的なシャドウ */
         .card-shadow {
@@ -92,24 +92,22 @@
 
     <!-- アプリヘッダー -->
     <header class="w-full max-w-4xl flex items-center justify-between bg-white/90 backdrop-blur-sm p-3 md:p-4 rounded-3xl shadow-md border-4 border-emerald-300 z-10">
-        <button id="btn-home" class="btn-bounce bg-amber-400 hover:bg-amber-500 text-white px-3 py-2 md:px-4 md:py-3 rounded-2xl flex items-center gap-1 text-base md:text-xl font-bold shadow-sm">
-            🏠 <span>はじめに</span>
+        <!-- 長押しで戻るボタン -->
+        <button id="btn-home" class="btn-bounce bg-amber-400 hover:bg-amber-500 text-white px-3 py-2 md:px-4 md:py-3 rounded-2xl flex flex-col items-center justify-center text-xs md:text-sm font-bold shadow-sm relative overflow-hidden select-none" title="ながおしで はじめにもどる">
+            <span class="text-base md:text-xl font-bold flex items-center gap-1">🏠 <span>はじめに</span></span>
+            <span class="text-[10px] md:text-xs text-amber-900/70 -mt-0.5 font-normal">（ながおし）</span>
         </button>
 
         <!-- スコア・進捗表示 -->
         <div class="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-2xl border-2 border-amber-200">
             <span class="text-2xl md:text-3xl">⭐️</span>
-            <span id="score-display" class="text-xl md:text-2xl font-bold text-amber-700">0 / 5</span>
+            <span id="score-display" class="text-xl md:text-2xl font-bold text-amber-700">0 / 10</span>
         </div>
 
         <div class="flex items-center gap-2">
             <!-- 声で読み上げボタン -->
             <button id="btn-speak" class="btn-bounce bg-sky-400 hover:bg-sky-500 text-white px-3 py-2 md:px-4 md:py-3 rounded-2xl flex items-center gap-1 text-base md:text-xl font-bold shadow-sm" title="もういちど きく">
                 🔊 <span class="hidden sm:inline">きく</span>
-            </button>
-            <!-- 画像登録ボタン -->
-            <button id="btn-upload-modal" class="btn-bounce bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 md:px-4 md:py-3 rounded-2xl flex items-center gap-1 text-base md:text-xl font-bold shadow-sm" title="がぞう とうろく">
-                🖼️ <span class="hidden sm:inline">しゃしん</span>
             </button>
             <!-- 設定ボタン -->
             <button id="btn-settings" class="btn-bounce bg-gray-500 hover:bg-gray-600 text-white p-2 md:p-3 rounded-2xl text-base md:text-xl font-bold shadow-sm" title="せってい">
@@ -130,12 +128,19 @@
             </h1>
 
             <p class="text-lg md:text-2xl text-gray-600 leading-relaxed max-w-md">
-                がぞうや えを みて、<br>ぴったりな きせつを えらぼう！
+                とうろくした しゃしんを みて、<br>ぴったりな きせつを えらぼう！
             </p>
 
-            <button id="btn-start-game" class="btn-bounce card-shadow bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-2xl md:text-4xl px-10 py-5 rounded-full border-4 border-emerald-300 transition-all flex items-center gap-3">
-                ▶️ はじめる
-            </button>
+            <!-- スタート画面に移動した写真登録ボタンとスタートボタン -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md">
+                <button id="btn-upload-modal" class="btn-bounce card-shadow bg-purple-500 hover:bg-purple-600 text-white font-bold text-xl md:text-2xl px-6 py-4 rounded-full border-4 border-purple-300 w-full sm:w-auto flex items-center justify-center gap-2">
+                    🖼️ <span>しゃしんを とうろく</span>
+                </button>
+
+                <button id="btn-start-game" class="btn-bounce card-shadow bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-2xl md:text-3xl px-8 py-4 rounded-full border-4 border-emerald-300 w-full sm:w-auto flex items-center justify-center gap-2">
+                    ▶️ <span>はじめる</span>
+                </button>
+            </div>
         </div>
     </main>
 
@@ -403,11 +408,19 @@
            2. 季節マスター ＆ 標準データ
            ================================================================= */
         const SEASONS = {
-            spring: { id: 'spring', name: 'はる', colorClass: 'bg-spring', icon: '🌸' },
-            summer: { id: 'summer', name: 'なつ', colorClass: 'bg-summer', icon: '🌻' },
-            autumn: { id: 'autumn', name: 'あき', colorClass: 'bg-autumn', icon: '🍁' },
-            winter: { id: 'winter', name: 'ふゆ', colorClass: 'bg-winter', icon: '☃️' }
+            spring: { id: 'spring', name: 'はる', colorClass: 'bg-spring', textColorClass: 'text-pink-600', icon: '🌸' },
+            summer: { id: 'summer', name: 'なつ', colorClass: 'bg-summer', textColorClass: 'text-emerald-600', icon: '🌻' },
+            autumn: { id: 'autumn', name: 'あき', colorClass: 'bg-autumn', textColorClass: 'text-orange-600', icon: '🍁' },
+            winter: { id: 'winter', name: 'ふゆ', colorClass: 'bg-winter', textColorClass: 'text-blue-600', icon: '☃️' }
         };
+
+        // 季節のアイコン表示用ヘルパー（秋のもみじを鮮やかな赤色SVGアイコンで描画）
+        function getSeasonIconHtml(season, sizeClass = "text-5xl md:text-7xl") {
+            if (season.id === 'autumn') {
+                return `<svg class="w-12 h-12 md:w-20 md:h-20 drop-shadow inline-block" viewBox="0 0 100 100" fill="#dc2626"><path d="M50,2 L55,22 L70,10 L65,30 L85,25 L73,42 L95,48 L76,60 L90,75 L68,72 L62,90 L52,75 L50,98 L48,75 L38,90 L32,72 L10,75 L24,60 L5,48 L27,42 L15,25 L35,30 L30,10 L45,22 Z"/></svg>`;
+            }
+            return `<span class="${sizeClass}">${season.icon}</span>`;
+        }
 
         const PRESET_ITEMS = [
             // 春
@@ -481,18 +494,27 @@
                 return;
             }
 
+            const seasonTextColor = {
+                spring: 'text-pink-600',
+                summer: 'text-emerald-600',
+                autumn: 'text-orange-600',
+                winter: 'text-blue-600'
+            };
+
             customItems.forEach((item, index) => {
                 const row = document.createElement('div');
                 row.className = 'flex items-center justify-between bg-white p-2 rounded-xl border border-purple-200 shadow-sm';
                 
                 const seasonObj = SEASONS[item.season];
+                const colorClass = seasonTextColor[item.season] || 'text-purple-600';
+                const iconDisplay = getSeasonIconHtml(seasonObj, 'text-base');
 
                 row.innerHTML = `
                     <div class="flex items-center gap-2 overflow-hidden">
                         <img src="${item.imageDataUrl}" class="w-10 h-10 object-cover rounded-lg border border-gray-200">
                         <div class="flex flex-col truncate">
                             <span class="font-bold text-sm text-gray-800 truncate">${item.name}</span>
-                            <span class="text-xs text-purple-600">${seasonObj.icon} ${seasonObj.name}</span>
+                            <span class="text-xs font-bold ${colorClass} flex items-center gap-1">${iconDisplay} ${seasonObj.name}</span>
                         </div>
                     </div>
                     <button class="btn-bounce bg-rose-100 hover:bg-rose-200 text-rose-700 px-3 py-1 rounded-lg text-xs font-bold shrink-0" onclick="deleteCustomItem(${index})">
@@ -516,7 +538,7 @@
             mode: 'item-to-season', // 'item-to-season' (絵->季節) または 'season-to-item' (季節->絵)
             optionCount: 3,         // 2択, 3択, 4択
             speechEnabled: true,
-            totalQuestions: 5,
+            totalQuestions: 10,     // 10問正解でクリアに変更
             currentQuestionIdx: 0,
             score: 0,
             currentQuestion: null,
@@ -603,8 +625,12 @@
            7. 問題生成ロジック
            ================================================================= */
         function generateQuestion() {
-            // 全アイテムプール (標準 + カスタムアップロード)
-            const allItems = [...PRESET_ITEMS, ...customItems];
+            // 登録された画像のみを問題プールとして使用
+            const allItems = customItems;
+
+            if (allItems.length === 0) {
+                return null;
+            }
 
             // ランダムに正解アイテムを選択
             const targetItem = allItems[Math.floor(Math.random() * allItems.length)];
@@ -621,8 +647,8 @@
                 options.sort(() => Math.random() - 0.5);
 
                 return {
-                    text: `この えは どの きせつかな？`,
-                    speech: `このえは、どのきせつかな？`,
+                    text: `この しゃしんは どの きせつかな？`,
+                    speech: `このしゃしんは、どのきせつかな？`,
                     targetItem: targetItem,
                     correctId: correctSeason.id,
                     options: options, // 季節オブジェクト
@@ -631,17 +657,17 @@
             } else {
                 // 【モード2】「季節を見て 絵を選ぶ」
                 let options = [targetItem];
-                const otherItems = allItems.filter(item => item.season !== targetItem.season);
+                const otherItems = allItems.filter(item => item.id !== targetItem.id);
                 
                 otherItems.sort(() => Math.random() - 0.5);
                 options = options.concat(otherItems.slice(0, state.optionCount - 1));
                 options.sort(() => Math.random() - 0.5);
 
                 return {
-                    text: `「${correctSeason.name}」の えは どれかな？`,
-                    speech: `${correctSeason.name}のえはどれかな？`,
+                    text: `「${correctSeason.name}」の しゃしんは どれかな？`,
+                    speech: `${correctSeason.name}のしゃしんはどれかな？`,
                     seasonVisual: correctSeason,
-                    correctId: targetItem.id || targetItem.emoji || targetItem.name,
+                    correctId: targetItem.id,
                     options: options, // アイテムオブジェクト
                     type: 'item-options'
                 };
@@ -654,6 +680,14 @@
         function loadNextQuestion() {
             state.isLocked = false;
             document.getElementById('feedback-bar').textContent = '';
+
+            // 登録画像チェック
+            if (customItems.length === 0) {
+                showScreen('start');
+                modalUpload.classList.remove('hidden');
+                speakText('まずは しゃしんを とうろく してね！');
+                return;
+            }
 
             if (state.currentQuestionIdx >= state.totalQuestions) {
                 showScreen('result');
@@ -677,30 +711,21 @@
             visualBox.innerHTML = '';
 
             if (q.type === 'season-options') {
-                // 中央にアイテム（画像または絵文字）を表示
+                // 中央に登録画像を表示
                 const item = q.targetItem;
-                if (item.imageDataUrl) {
-                    visualBox.innerHTML = `
-                        <div class="flex flex-col items-center gap-1">
-                            <img src="${item.imageDataUrl}" class="h-32 md:h-44 object-contain rounded-2xl border-4 border-amber-300 shadow-md max-w-full">
-                            <span class="text-xl md:text-2xl font-bold text-gray-700">${item.name}</span>
-                        </div>
-                    `;
-                } else {
-                    visualBox.innerHTML = `
-                        <div class="flex flex-col items-center">
-                            <span class="text-7xl md:text-9xl my-1 drop-shadow-md">${item.emoji}</span>
-                            <span class="text-xl md:text-3xl font-bold text-gray-700">${item.name}</span>
-                        </div>
-                    `;
-                }
+                visualBox.innerHTML = `
+                    <div class="flex flex-col items-center gap-1">
+                        <img src="${item.imageDataUrl}" class="h-32 md:h-44 object-contain rounded-2xl border-4 border-amber-300 shadow-md max-w-full">
+                        <span class="text-xl md:text-2xl font-bold text-gray-700">${item.name}</span>
+                    </div>
+                `;
             } else {
                 // 中央に季節のアイコンを表示
                 const season = q.seasonVisual;
                 visualBox.innerHTML = `
                     <div class="flex flex-col items-center">
-                        <span class="text-7xl md:text-9xl my-1 drop-shadow-md">${season.icon}</span>
-                        <span class="text-2xl md:text-4xl font-bold text-sky-800">${season.name}</span>
+                        <div class="my-1 drop-shadow-md flex items-center justify-center">${getSeasonIconHtml(season, 'text-7xl md:text-9xl')}</div>
+                        <span class="text-2xl md:text-4xl font-bold ${season.textColorClass}">${season.name}</span>
                     </div>
                 `;
             }
@@ -709,10 +734,11 @@
             const container = document.getElementById('options-container');
             container.innerHTML = '';
 
-            // 択数に応じたレイアウト構成 (2択, 3択, 4択)
-            if (state.optionCount === 2) {
+            // 選択肢の数に応じたグリッド配置（登録写真数に応じて調整）
+            const displayOptionCount = Math.min(q.options.length, state.optionCount);
+            if (displayOptionCount <= 2) {
                 container.className = 'w-full grid grid-cols-2 gap-4 md:gap-8 my-auto max-w-2xl mx-auto';
-            } else if (state.optionCount === 3) {
+            } else if (displayOptionCount === 3) {
                 container.className = 'w-full grid grid-cols-3 gap-3 md:gap-6 my-auto max-w-3xl mx-auto';
             } else {
                 container.className = 'w-full grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 my-auto';
@@ -720,31 +746,24 @@
 
             q.options.forEach(opt => {
                 const btn = document.createElement('button');
-                btn.className = `btn-bounce card-shadow p-3 md:p-5 rounded-3xl border-4 flex flex-col items-center justify-center gap-2 transition-all min-h-[120px] md:min-h-[160px] bg-white border-sky-200`;
+                btn.className = `btn-bounce card-shadow p-3 md:p-5 rounded-3xl border-4 flex flex-col items-center justify-center gap-2 transition-all min-h-[120px] md:min-h-[160px]`;
 
                 if (q.type === 'season-options') {
                     // 季節を選ぶボタン
                     btn.classList.add(opt.colorClass);
                     btn.innerHTML = `
-                        <span class="text-5xl md:text-7xl">${opt.icon}</span>
+                        <div class="flex items-center justify-center">${getSeasonIconHtml(opt, 'text-5xl md:text-7xl')}</div>
                         <span class="text-2xl md:text-4xl font-bold">${opt.name}</span>
                     `;
                     btn.addEventListener('click', (e) => handleAnswer(opt.id, btn, e));
                 } else {
-                    // 絵を選ぶボタン
-                    const optId = opt.id || opt.emoji || opt.name;
-                    if (opt.imageDataUrl) {
-                        btn.innerHTML = `
-                            <img src="${opt.imageDataUrl}" class="h-16 md:h-24 object-contain rounded-xl border-2 border-gray-200">
-                            <span class="text-lg md:text-2xl font-bold text-gray-700 truncate w-full">${opt.name}</span>
-                        `;
-                    } else {
-                        btn.innerHTML = `
-                            <span class="text-5xl md:text-7xl">${opt.emoji}</span>
-                            <span class="text-lg md:text-2xl font-bold text-gray-700">${opt.name}</span>
-                        `;
-                    }
-                    btn.addEventListener('click', (e) => handleAnswer(optId, btn, e));
+                    // 写真を選ぶボタン
+                    btn.classList.add('bg-white', 'border-sky-200');
+                    btn.innerHTML = `
+                        <img src="${opt.imageDataUrl}" class="h-16 md:h-24 object-contain rounded-xl border-2 border-gray-200">
+                        <span class="text-lg md:text-2xl font-bold text-gray-700 truncate w-full">${opt.name}</span>
+                    `;
+                    btn.addEventListener('click', (e) => handleAnswer(opt.id, btn, e));
                 }
 
                 container.appendChild(btn);
@@ -822,6 +841,11 @@
 
         function startNewGame() {
             sound.playTap();
+            if (customItems.length === 0) {
+                modalUpload.classList.remove('hidden');
+                speakText('まずは しゃしんを とうろく してね！');
+                return;
+            }
             state.currentQuestionIdx = 0;
             state.score = 0;
             showScreen('game');
@@ -834,10 +858,39 @@
         document.getElementById('btn-start-game').addEventListener('click', startNewGame);
         document.getElementById('btn-restart').addEventListener('click', startNewGame);
 
-        document.getElementById('btn-home').addEventListener('click', () => {
-            sound.playTap();
-            showScreen('start');
-        });
+        // 「はじめに」ボタンの長押し（ロングプレス）判定処理
+        const btnHome = document.getElementById('btn-home');
+        let homeLongPressTimer = null;
+        const LONG_PRESS_TIME = 1000; // 1秒間長押し
+
+        function startHomePress(e) {
+            if (homeLongPressTimer) clearTimeout(homeLongPressTimer);
+            btnHome.classList.add('scale-95', 'opacity-80');
+            
+            homeLongPressTimer = setTimeout(() => {
+                sound.playTap();
+                btnHome.classList.remove('scale-95', 'opacity-80');
+                showScreen('start');
+                homeLongPressTimer = null;
+            }, LONG_PRESS_TIME);
+        }
+
+        function cancelHomePress() {
+            btnHome.classList.remove('scale-95', 'opacity-80');
+            if (homeLongPressTimer) {
+                clearTimeout(homeLongPressTimer);
+                homeLongPressTimer = null;
+                // 短いタップの場合は案内音声を再生
+                speakText('ながおし すると はじめに もどるよ');
+            }
+        }
+
+        btnHome.addEventListener('mousedown', startHomePress);
+        btnHome.addEventListener('mouseup', cancelHomePress);
+        btnHome.addEventListener('mouseleave', cancelHomePress);
+        btnHome.addEventListener('touchstart', (e) => { e.preventDefault(); startHomePress(e); }, { passive: false });
+        btnHome.addEventListener('touchend', cancelHomePress);
+        btnHome.addEventListener('touchcancel', cancelHomePress);
 
         document.getElementById('btn-speak').addEventListener('click', () => {
             sound.playTap();
