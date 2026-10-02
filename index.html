@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="img.png">
+    <title>どのきせつかな？ゲーム</title>
+
+    <!-- Google Fonts: Klee One -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Klee One', cursive, sans-serif;
+        }
+
+        body {
+            touch-action: manipulation;
+            background-color: #f0fdf4;
+            overflow-x: hidden;
+            font-weight: 600;
+        }
+
+        /* 押したときのリプル・弾むアニメーション */
+        .btn-bounce {
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s ease;
+        }
+        .btn-bounce:active {
+            transform: scale(0.92);
+        }
+
+        /* 季節ごとのパステルテーマ */
+        .bg-spring { background-color: #ffe4e6; border-color: #f43f5e; color: #9f1239; }
+        .bg-summer { background-color: #e0f2fe; border-color: #0284c7; color: #075985; }
+        .bg-autumn { background-color: #ffedd5; border-color: #ea580c; color: #9a3412; }
+        .bg-winter { background-color: #f1f5f9; border-color: #64748b; color: #334155; }
+
+        /* カードの立体的なシャドウ */
+        .card-shadow {
+            box-shadow: 0 8px 0 0 rgba(0,0,0,0.12);
+        }
+        .card-shadow:active {
+            box-shadow: 0 2px 0 0 rgba(0,0,0,0.12);
+            transform: translateY(6px);
+        }
+
+        /* アニメーション定義 */
+        @keyframes pulse-gentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .animate-pulse-gentle {
+            animation: pulse-gentle 2s infinite ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* Canvasオーバーレイ */
+        #effects-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center p-3 md:p-6 text-gray-800 select-none">
+
+    <!-- エフェクト用キャンバス -->
+    <canvas id="effects-canvas"></canvas>
+
+    <!-- アプリヘッダー -->
+    <header class="w-full max-w-4xl flex items-center justify-between bg-white/90 backdrop-blur-sm p-3 md:p-4 rounded-3xl shadow-md border-4 border-emerald-300 z-10">
+        <button id="btn-home" class="btn-bounce bg-amber-400 hover:bg-amber-500 text-white px-3 py-2 md:px-4 md:py-3 rounded-2xl flex items-center gap-1 text-base md:text-xl font-bold shadow-sm">
+            🏠 <span>はじめに</span>
+        </button>
+
+        <!-- スコア・進捗表示 -->
+        <div class="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-2xl border-2 border-amber-200">
+            <span class="text-2xl md:text-3xl">⭐️</span>
+            <span id="score-display" class="text-xl md:text-2xl font-bold text-amber-700">0 / 5</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- 声で読み上げボタン -->
+            <button id="btn-speak" class="btn-bounce bg-sky-400 hover:bg-sky-500 text-white px-3 py-2 md:px-4 md:py-3 rounded-2xl flex items-center gap-1 text-base md:text-xl font-bold shadow-sm" title="もういちど きく">
+                🔊 <span class="hidden sm:inline">きく</span>
+            </button>
+            <!-- 画像登録ボタン -->
+            <button id="btn-upload-modal" class="btn-bounce bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 md:px-4 md:py-3 rounded-2xl flex items-center gap-1 text-base md:text-xl font-bold shadow-sm" title="がぞう とうろく">
+                🖼️ <span class="hidden sm:inline">しゃしん</span>
+            </button>
+            <!-- 設定ボタン -->
+            <button id="btn-settings" class="btn-bounce bg-gray-500 hover:bg-gray-600 text-white p-2 md:p-3 rounded-2xl text-base md:text-xl font-bold shadow-sm" title="せってい">
+                ⚙️
+            </button>
+        </div>
+    </header>
+
+    <!-- スタート画面 -->
+    <main id="screen-start" class="w-full max-w-3xl flex-1 flex flex-col items-center justify-center my-4 text-center z-10">
+        <div class="bg-white/95 p-6 md:p-10 rounded-3xl shadow-xl border-4 border-emerald-400 w-full flex flex-col items-center gap-6">
+            <div class="text-6xl md:text-8xl animate-pulse-gentle">
+                🌸 🌻 🍁 ☃️
+            </div>
+            
+            <h1 class="text-3xl md:text-5xl font-bold text-emerald-700 tracking-wider">
+                どのきせつかな？<br><span class="text-2xl md:text-3xl text-emerald-600">ゲーム</span>
+            </h1>
+
+            <p class="text-lg md:text-2xl text-gray-600 leading-relaxed max-w-md">
+                がぞうや えを みて、<br>ぴったりな きせつを えらぼう！
+            </p>
+
+            <button id="btn-start-game" class="btn-bounce card-shadow bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-2xl md:text-4xl px-10 py-5 rounded-full border-4 border-emerald-300 transition-all flex items-center gap-3">
+                ▶️ はじめる
+            </button>
+        </div>
+    </main>
+
+    <!-- ゲーム画面 -->
+    <main id="screen-game" class="w-full max-w-4xl flex-1 flex flex-col items-center justify-around my-2 z-10 hidden">
+        <!-- 質問エリア -->
+        <div class="w-full bg-white/95 p-4 md:p-6 rounded-3xl shadow-md border-4 border-sky-300 text-center flex flex-col items-center justify-center min-h-[220px] md:min-h-[280px]">
+            <!-- 質問テキスト -->
+            <p id="question-text" class="text-2xl md:text-4xl font-bold text-sky-900 mb-2 leading-snug">
+                この えは どの きせつかな？
+            </p>
+
+            <!-- メイン問題表示部 (絵文字 または アップロード画像) -->
+            <div id="question-visual-box" class="my-2 flex items-center justify-center">
+                <!-- JavaScriptで挿入 -->
+            </div>
+        </div>
+
+        <!-- 選択肢カード表示エリア (2択 または 3択) -->
+        <div id="options-container" class="w-full my-3">
+            <!-- JavaScriptで動的にカードを生成 -->
+        </div>
+
+        <!-- フィードバック表示バー -->
+        <div id="feedback-bar" class="h-12 flex items-center justify-center text-2xl md:text-3xl font-bold">
+            <!-- 正解・おしいのメッセージ -->
+        </div>
+    </main>
+
+    <!-- 結果画面 -->
+    <main id="screen-result" class="w-full max-w-3xl flex-1 flex flex-col items-center justify-center my-4 text-center z-10 hidden">
+        <div class="bg-white/95 p-6 md:p-10 rounded-3xl shadow-xl border-4 border-amber-400 w-full flex flex-col items-center gap-6">
+            <div class="text-7xl md:text-9xl animate-bounce">
+                💮
+            </div>
+            
+            <h2 class="text-3xl md:text-5xl font-bold text-amber-600">
+                ぜんぶ できたね！
+            </h2>
+
+            <p class="text-2xl md:text-3xl font-bold text-gray-700">
+                たいへん よく できました！
+            </p>
+
+            <button id="btn-restart" class="btn-bounce card-shadow bg-amber-500 hover:bg-amber-600 text-white font-bold text-2xl md:text-3xl px-8 py-4 rounded-full border-4 border-amber-300">
+                🔄 もう一度あそぶ
+            </button>
+        </div>
+    </main>
+
+    <!-- 画像登録モーダル（先生・ご家族用） -->
+    <div id="modal-upload" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl p-5 md:p-8 max-w-lg w-full border-4 border-purple-300 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl md:text-3xl font-bold text-purple-800 text-center border-b-2 border-purple-100 pb-2">
+                🖼️ しゃしん・がぞう とうろく
+            </h3>
+
+            <p class="text-sm md:text-base text-gray-600 leading-relaxed">
+                カメラで撮影した写真や画像を登録して、ゲームの問題に出題できます！
+            </p>
+
+            <!-- フォームエリア -->
+            <div class="flex flex-col gap-3 bg-purple-50 p-4 rounded-2xl border border-purple-200">
+                <div>
+                    <label class="block text-base font-bold text-purple-900 mb-1">1. しゃしん・がぞうを えらぶ</label>
+                    <input type="file" id="input-image-file" accept="image/*" class="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer">
+                </div>
+
+                <div>
+                    <label class="block text-base font-bold text-purple-900 mb-1">2. なまえ (例: えんそく, ひまわり)</label>
+                    <input type="text" id="input-image-name" placeholder="なまえを にゅうりょく" class="w-full p-2.5 text-base border-2 border-purple-200 rounded-xl focus:outline-none focus:border-purple-500">
+                </div>
+
+                <div>
+                    <label class="block text-base font-bold text-purple-900 mb-1">3. きせつ</label>
+                    <select id="input-image-season" class="w-full p-2.5 text-base border-2 border-purple-200 rounded-xl bg-white font-bold focus:outline-none focus:border-purple-500">
+                        <option value="spring">🌸 はる (Spring)</option>
+                        <option value="summer">🌻 なつ (Summer)</option>
+                        <option value="autumn">🍁 あき (Autumn)</option>
+                        <option value="winter">☃️ ふゆ (Winter)</option>
+                    </select>
+                </div>
+
+                <button id="btn-add-custom-image" class="btn-bounce bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-sm text-lg mt-1">
+                    ➕ とうろく する
+                </button>
+            </div>
+
+            <!-- 登録済み画像リスト -->
+            <div class="flex flex-col gap-2">
+                <h4 class="text-lg font-bold text-gray-800">とうろくした しゃしん（<span id="custom-count">0</span>件）</h4>
+                <div id="custom-images-list" class="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+                    <!-- JSで一覧描画 -->
+                </div>
+            </div>
+
+            <button id="btn-close-upload" class="btn-bounce bg-gray-400 hover:bg-gray-500 text-white font-bold text-lg py-2.5 rounded-xl shadow-md">
+                とじる
+            </button>
+        </div>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div id="modal-settings" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full border-4 border-gray-300 shadow-2xl flex flex-col gap-6">
+            <h3 class="text-2xl md:text-3xl font-bold text-gray-800 text-center border-b-2 border-gray-200 pb-3">
+                ⚙️ せってい
+            </h3>
+
+            <!-- 項目1: 選択肢の数 (2択 / 3択 / 4択) -->
+            <div class="flex flex-col gap-2">
+                <label class="text-lg md:text-xl font-bold text-gray-700">せんたくしの かず</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" id="choice-cnt-2" class="btn-choice-cnt p-3 text-base md:text-lg font-bold rounded-2xl border-2 border-emerald-500 bg-emerald-100 text-emerald-800">2つ (かんたん)</button>
+                    <button type="button" id="choice-cnt-3" class="btn-choice-cnt p-3 text-base md:text-lg font-bold rounded-2xl border-2 border-gray-300 bg-gray-50 text-gray-600">3つ (おすすめ)</button>
+                    <button type="button" id="choice-cnt-4" class="btn-choice-cnt p-3 text-base md:text-lg font-bold rounded-2xl border-2 border-gray-300 bg-gray-50 text-gray-600">4つ (すべて)</button>
+                </div>
+            </div>
+
+            <!-- 項目2: 出題モード -->
+            <div class="flex flex-col gap-2">
+                <label class="text-lg md:text-xl font-bold text-gray-700">ゲームの かたち</label>
+                <select id="setting-mode" class="p-3 text-lg border-2 border-gray-300 rounded-2xl bg-gray-50 font-bold focus:outline-none focus:border-emerald-500">
+                    <option value="item-to-season">① えを見て 季節を選ぶ</option>
+                    <option value="season-to-item">② 季節を見て えを選ぶ</option>
+                </select>
+            </div>
+
+            <!-- 項目3: 音声読み上げ -->
+            <div class="flex items-center justify-between border-t border-gray-100 pt-3">
+                <span class="text-lg md:text-xl font-bold text-gray-700">こえの よみあげ</span>
+                <input type="checkbox" id="setting-speech" class="w-7 h-7 accent-emerald-500 rounded cursor-pointer" checked>
+            </div>
+
+            <!-- 閉じるボタン -->
+            <button id="btn-close-settings" class="btn-bounce bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xl py-3 rounded-2xl shadow-md">
+                とじる
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* =================================================================
+           1. 音響エンジン (Web Audio API)
+           外部音声ファイル不要のリアルタイムリアル音源
+           ================================================================= */
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // タップ音（ポコン）
+            playTap() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(850, this.ctx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            // 正解音（ピンポン♪チャイム）
+            playCorrect() {
+                this.init();
+                const now = this.ctx.currentTime;
+                
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+
+                    const startTime = now + idx * 0.09;
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(0.35, startTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.4);
+                });
+            }
+
+            // おしい・もう一回音（優しいトーン）
+            playTryAgain() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, now);
+                osc.frequency.exponentialRampToValueAtTime(240, now + 0.22);
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.22);
+            }
+
+            // クリアファンファーレ
+            playFanfare() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const melody = [
+                    { f: 523.25, d: 0.15 },
+                    { f: 659.25, d: 0.15 },
+                    { f: 783.99, d: 0.15 },
+                    { f: 1046.50, d: 0.55 }
+                ];
+
+                let time = now;
+                melody.forEach(note => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.value = note.f;
+
+                    gain.gain.setValueAtTime(0.35, time);
+                    gain.gain.exponentialRampToValueAtTime(0.001, time + note.d);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(time);
+                    osc.stop(time + note.d);
+
+                    time += note.d * 0.9;
+                });
+            }
+        }
+
+        const sound = new SoundEffects();
+
+        /* =================================================================
+           2. 季節マスター ＆ 標準データ
+           ================================================================= */
+        const SEASONS = {
+            spring: { id: 'spring', name: 'はる', colorClass: 'bg-spring', icon: '🌸' },
+            summer: { id: 'summer', name: 'なつ', colorClass: 'bg-summer', icon: '🌻' },
+            autumn: { id: 'autumn', name: 'あき', colorClass: 'bg-autumn', icon: '🍁' },
+            winter: { id: 'winter', name: 'ふゆ', colorClass: 'bg-winter', icon: '☃️' }
+        };
+
+        const PRESET_ITEMS = [
+            // 春
+            { id: 'p1', emoji: '🌸', name: 'さくら', season: 'spring' },
+            { id: 'p2', emoji: '🎒', name: 'らんせる', season: 'spring' },
+            { id: 'p3', emoji: '🍡', name: 'はなみだんご', season: 'spring' },
+            { id: 'p4', emoji: '🍓', name: 'いちご', season: 'spring' },
+            { id: 'p5', emoji: '🦋', name: 'ちょうちょ', season: 'spring' },
+            { id: 'p6', emoji: '🌷', name: 'ちゅーりっぷ', season: 'spring' },
+
+            // 夏
+            { id: 'p7', emoji: '🍉', name: 'すいか', season: 'summer' },
+            { id: 'p8', emoji: '🌻', name: 'ひまわり', season: 'summer' },
+            { id: 'p9', emoji: '🎆', name: 'はなび', season: 'summer' },
+            { id: 'p10', emoji: '🍧', name: 'かきごおり', season: 'summer' },
+            { id: 'p11', emoji: '🍦', name: 'あいす', season: 'summer' },
+            { id: 'p12', emoji: '🪲', name: 'かぶとむし', season: 'summer' },
+
+            // 秋
+            { id: 'p13', emoji: '🍁', name: 'もみじ', season: 'autumn' },
+            { id: 'p14', emoji: '🍠', name: 'さつまいも', season: 'autumn' },
+            { id: 'p15', emoji: '🌰', name: 'くり', season: 'autumn' },
+            { id: 'p16', emoji: '🎃', name: 'はろうぃん', season: 'autumn' },
+            { id: 'p17', emoji: '🌕', name: 'おつきみ', season: 'autumn' },
+            { id: 'p18', emoji: '🍇', name: 'ぶどう', season: 'autumn' },
+
+            // 冬
+            { id: 'p19', emoji: '☃️', name: 'ゆきだるま', season: 'winter' },
+            { id: 'p20', emoji: '🎄', name: 'くりすます', season: 'winter' },
+            { id: 'p21', emoji: '🍊', name: 'みかん', season: 'winter' },
+            { id: 'p22', emoji: '❄️', name: 'ゆきのけっしょう', season: 'winter' },
+            { id: 'p23', emoji: '🧤', name: 'てぶくろ', season: 'winter' },
+            { id: 'p24', emoji: '👹', name: 'せつぶん', season: 'winter' }
+        ];
+
+        /* =================================================================
+           3. カスタム登録画像ストレージ (localStorage)
+           ================================================================= */
+        let customItems = [];
+
+        function loadCustomItems() {
+            try {
+                const saved = localStorage.getItem('custom_season_items');
+                if (saved) {
+                    customItems = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('Failed to load custom items:', e);
+                customItems = [];
+            }
+            updateCustomItemsListUI();
+        }
+
+        function saveCustomItems() {
+            try {
+                localStorage.setItem('custom_season_items', JSON.stringify(customItems));
+            } catch (e) {
+                alert('ストレージの容量を超えた可能性があります。不要な画像を削除してください。');
+            }
+            updateCustomItemsListUI();
+        }
+
+        function updateCustomItemsListUI() {
+            const container = document.getElementById('custom-images-list');
+            const countEl = document.getElementById('custom-count');
+            countEl.textContent = customItems.length;
+
+            container.innerHTML = '';
+            if (customItems.length === 0) {
+                container.innerHTML = `<p class="text-gray-400 text-sm text-center py-2">とうろくした しゃしんは ありません</p>`;
+                return;
+            }
+
+            customItems.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-white p-2 rounded-xl border border-purple-200 shadow-sm';
+                
+                const seasonObj = SEASONS[item.season];
+
+                row.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <img src="${item.imageDataUrl}" class="w-10 h-10 object-cover rounded-lg border border-gray-200">
+                        <div class="flex flex-col truncate">
+                            <span class="font-bold text-sm text-gray-800 truncate">${item.name}</span>
+                            <span class="text-xs text-purple-600">${seasonObj.icon} ${seasonObj.name}</span>
+                        </div>
+                    </div>
+                    <button class="btn-bounce bg-rose-100 hover:bg-rose-200 text-rose-700 px-3 py-1 rounded-lg text-xs font-bold shrink-0" onclick="deleteCustomItem(${index})">
+                        さくじょ
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function deleteCustomItem(index) {
+            customItems.splice(index, 1);
+            saveCustomItems();
+        }
+
+        /* =================================================================
+           4. アプリ状態管理
+           ================================================================= */
+        let state = {
+            currentScreen: 'start',
+            mode: 'item-to-season', // 'item-to-season' (絵->季節) または 'season-to-item' (季節->絵)
+            optionCount: 3,         // 2択, 3択, 4択
+            speechEnabled: true,
+            totalQuestions: 5,
+            currentQuestionIdx: 0,
+            score: 0,
+            currentQuestion: null,
+            isLocked: false
+        };
+
+        /* =================================================================
+           5. 演出キャンバス (星・花びら・紙吹雪)
+           ================================================================= */
+        const canvas = document.getElementById('effects-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function createParticles(x, y, count = 35) {
+            const shapes = ['✨', '⭐', '🌸', '💮', '🎉', '🌟', '🍀'];
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x || canvas.width / 2,
+                    y: y || canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 14,
+                    vy: (Math.random() - 0.7) * 16,
+                    size: Math.random() * 26 + 16,
+                    shape: shapes[Math.floor(Math.random() * shapes.length)],
+                    rotation: Math.random() * 360,
+                    vRot: (Math.random() - 0.5) * 12,
+                    life: 1
+                });
+            }
+        }
+
+        function updateAndRenderCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.35; // 重力
+                p.rotation += p.vRot;
+                p.life -= 0.016;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.font = `${p.size}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(p.shape, 0, 0);
+                ctx.restore();
+            }
+
+            requestAnimationFrame(updateAndRenderCanvas);
+        }
+        requestAnimationFrame(updateAndRenderCanvas);
+
+        /* =================================================================
+           6. 音声読み上げ機能 (Web Speech API)
+           ================================================================= */
+        function speakText(text) {
+            if (!state.speechEnabled || !('speechSynthesis' in window)) return;
+            
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ja-JP';
+            utterance.rate = 0.85;  // 児童向けにゆっくり
+            utterance.pitch = 1.1;  // 明るめの声質
+            window.speechSynthesis.speak(utterance);
+        }
+
+        /* =================================================================
+           7. 問題生成ロジック
+           ================================================================= */
+        function generateQuestion() {
+            // 全アイテムプール (標準 + カスタムアップロード)
+            const allItems = [...PRESET_ITEMS, ...customItems];
+
+            // ランダムに正解アイテムを選択
+            const targetItem = allItems[Math.floor(Math.random() * allItems.length)];
+            const correctSeason = SEASONS[targetItem.season];
+
+            if (state.mode === 'item-to-season') {
+                // 【モード1】「えを見て 季節を選ぶ」
+                let options = [correctSeason];
+                const otherSeasons = Object.values(SEASONS).filter(s => s.id !== correctSeason.id);
+                
+                // シャッフルして必要数取得
+                otherSeasons.sort(() => Math.random() - 0.5);
+                options = options.concat(otherSeasons.slice(0, state.optionCount - 1));
+                options.sort(() => Math.random() - 0.5);
+
+                return {
+                    text: `この えは どの きせつかな？`,
+                    speech: `このえは、どのきせつかな？`,
+                    targetItem: targetItem,
+                    correctId: correctSeason.id,
+                    options: options, // 季節オブジェクト
+                    type: 'season-options'
+                };
+            } else {
+                // 【モード2】「季節を見て 絵を選ぶ」
+                let options = [targetItem];
+                const otherItems = allItems.filter(item => item.season !== targetItem.season);
+                
+                otherItems.sort(() => Math.random() - 0.5);
+                options = options.concat(otherItems.slice(0, state.optionCount - 1));
+                options.sort(() => Math.random() - 0.5);
+
+                return {
+                    text: `「${correctSeason.name}」の えは どれかな？`,
+                    speech: `${correctSeason.name}のえはどれかな？`,
+                    seasonVisual: correctSeason,
+                    correctId: targetItem.id || targetItem.emoji || targetItem.name,
+                    options: options, // アイテムオブジェクト
+                    type: 'item-options'
+                };
+            }
+        }
+
+        /* =================================================================
+           8. 画面描写および問題ロード
+           ================================================================= */
+        function loadNextQuestion() {
+            state.isLocked = false;
+            document.getElementById('feedback-bar').textContent = '';
+
+            if (state.currentQuestionIdx >= state.totalQuestions) {
+                showScreen('result');
+                sound.playFanfare();
+                createParticles(window.innerWidth / 2, window.innerHeight / 2, 80);
+                speakText('ぜんぶできたね！たいへんよくできました！');
+                return;
+            }
+
+            // スコア表示更新
+            document.getElementById('score-display').textContent = `${state.currentQuestionIdx} / ${state.totalQuestions}`;
+
+            // 問題作成
+            state.currentQuestion = generateQuestion();
+            const q = state.currentQuestion;
+
+            // UI反映
+            document.getElementById('question-text').textContent = q.text;
+
+            const visualBox = document.getElementById('question-visual-box');
+            visualBox.innerHTML = '';
+
+            if (q.type === 'season-options') {
+                // 中央にアイテム（画像または絵文字）を表示
+                const item = q.targetItem;
+                if (item.imageDataUrl) {
+                    visualBox.innerHTML = `
+                        <div class="flex flex-col items-center gap-1">
+                            <img src="${item.imageDataUrl}" class="h-32 md:h-44 object-contain rounded-2xl border-4 border-amber-300 shadow-md max-w-full">
+                            <span class="text-xl md:text-2xl font-bold text-gray-700">${item.name}</span>
+                        </div>
+                    `;
+                } else {
+                    visualBox.innerHTML = `
+                        <div class="flex flex-col items-center">
+                            <span class="text-7xl md:text-9xl my-1 drop-shadow-md">${item.emoji}</span>
+                            <span class="text-xl md:text-3xl font-bold text-gray-700">${item.name}</span>
+                        </div>
+                    `;
+                }
+            } else {
+                // 中央に季節のアイコンを表示
+                const season = q.seasonVisual;
+                visualBox.innerHTML = `
+                    <div class="flex flex-col items-center">
+                        <span class="text-7xl md:text-9xl my-1 drop-shadow-md">${season.icon}</span>
+                        <span class="text-2xl md:text-4xl font-bold text-sky-800">${season.name}</span>
+                    </div>
+                `;
+            }
+
+            // 選択肢カード描画
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            // 択数に応じたレイアウト構成 (2択, 3択, 4択)
+            if (state.optionCount === 2) {
+                container.className = 'w-full grid grid-cols-2 gap-4 md:gap-8 my-auto max-w-2xl mx-auto';
+            } else if (state.optionCount === 3) {
+                container.className = 'w-full grid grid-cols-3 gap-3 md:gap-6 my-auto max-w-3xl mx-auto';
+            } else {
+                container.className = 'w-full grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 my-auto';
+            }
+
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = `btn-bounce card-shadow p-3 md:p-5 rounded-3xl border-4 flex flex-col items-center justify-center gap-2 transition-all min-h-[120px] md:min-h-[160px] bg-white border-sky-200`;
+
+                if (q.type === 'season-options') {
+                    // 季節を選ぶボタン
+                    btn.classList.add(opt.colorClass);
+                    btn.innerHTML = `
+                        <span class="text-5xl md:text-7xl">${opt.icon}</span>
+                        <span class="text-2xl md:text-4xl font-bold">${opt.name}</span>
+                    `;
+                    btn.addEventListener('click', (e) => handleAnswer(opt.id, btn, e));
+                } else {
+                    // 絵を選ぶボタン
+                    const optId = opt.id || opt.emoji || opt.name;
+                    if (opt.imageDataUrl) {
+                        btn.innerHTML = `
+                            <img src="${opt.imageDataUrl}" class="h-16 md:h-24 object-contain rounded-xl border-2 border-gray-200">
+                            <span class="text-lg md:text-2xl font-bold text-gray-700 truncate w-full">${opt.name}</span>
+                        `;
+                    } else {
+                        btn.innerHTML = `
+                            <span class="text-5xl md:text-7xl">${opt.emoji}</span>
+                            <span class="text-lg md:text-2xl font-bold text-gray-700">${opt.name}</span>
+                        `;
+                    }
+                    btn.addEventListener('click', (e) => handleAnswer(optId, btn, e));
+                }
+
+                container.appendChild(btn);
+            });
+
+            // 音声自動読み上げ
+            speakText(q.speech);
+        }
+
+        /* =================================================================
+           9. 回答判定・フィードバック処理
+           ================================================================= */
+        function handleAnswer(selectedId, btnElement, event) {
+            if (state.isLocked) return;
+
+            const isCorrect = (selectedId === state.currentQuestion.correctId);
+
+            if (isCorrect) {
+                state.isLocked = true;
+                sound.playCorrect();
+                
+                // タップ位置周辺から演出エフェクト
+                const rect = btnElement.getBoundingClientRect();
+                createParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, 40);
+
+                // フィードバック表示
+                const feedbackBar = document.getElementById('feedback-bar');
+                feedbackBar.textContent = '⭕️ せいかい！ すごいね！';
+                feedbackBar.className = 'h-12 flex items-center justify-center text-2xl md:text-3xl font-bold text-emerald-600 animate-bounce';
+
+                btnElement.classList.add('ring-8', 'ring-emerald-400');
+
+                speakText('せいかい！すごいね！');
+
+                setTimeout(() => {
+                    btnElement.classList.remove('ring-8', 'ring-emerald-400');
+                    state.currentQuestionIdx++;
+                    loadNextQuestion();
+                }, 1600);
+
+            } else {
+                // 失敗・おしい演出（ゲームオーバーなしで何度でも）
+                sound.playTryAgain();
+                btnElement.classList.add('animate-shake');
+                
+                const feedbackBar = document.getElementById('feedback-bar');
+                feedbackBar.textContent = '💡 おしい！ もういちど えらんでね';
+                feedbackBar.className = 'h-12 flex items-center justify-center text-xl md:text-2xl font-bold text-amber-600';
+
+                speakText('おしい！もう一度選んでね');
+
+                setTimeout(() => {
+                    btnElement.classList.remove('animate-shake');
+                }, 500);
+            }
+        }
+
+        /* =================================================================
+           10. 画面切替制御
+           ================================================================= */
+        function showScreen(screenName) {
+            state.currentScreen = screenName;
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-result').classList.add('hidden');
+
+            if (screenName === 'start') {
+                document.getElementById('screen-start').classList.remove('hidden');
+            } else if (screenName === 'game') {
+                document.getElementById('screen-game').classList.remove('hidden');
+            } else if (screenName === 'result') {
+                document.getElementById('screen-result').classList.remove('hidden');
+            }
+        }
+
+        function startNewGame() {
+            sound.playTap();
+            state.currentQuestionIdx = 0;
+            state.score = 0;
+            showScreen('game');
+            loadNextQuestion();
+        }
+
+        /* =================================================================
+           11. イベントリスナー登録 ＆ アプリ初期化
+           ================================================================= */
+        document.getElementById('btn-start-game').addEventListener('click', startNewGame);
+        document.getElementById('btn-restart').addEventListener('click', startNewGame);
+
+        document.getElementById('btn-home').addEventListener('click', () => {
+            sound.playTap();
+            showScreen('start');
+        });
+
+        document.getElementById('btn-speak').addEventListener('click', () => {
+            sound.playTap();
+            if (state.currentQuestion) {
+                speakText(state.currentQuestion.speech);
+            }
+        });
+
+        // 画像アップロードモーダル制御
+        const modalUpload = document.getElementById('modal-upload');
+        document.getElementById('btn-upload-modal').addEventListener('click', () => {
+            sound.playTap();
+            modalUpload.classList.remove('hidden');
+        });
+        document.getElementById('btn-close-upload').addEventListener('click', () => {
+            sound.playTap();
+            modalUpload.classList.add('hidden');
+        });
+
+        // 画像追加ボタン処理
+        document.getElementById('btn-add-custom-image').addEventListener('click', () => {
+            const fileInput = document.getElementById('input-image-file');
+            const nameInput = document.getElementById('input-image-name');
+            const seasonSelect = document.getElementById('input-image-season');
+
+            const file = fileInput.files[0];
+            const name = nameInput.value.trim() || 'しゃしん';
+            const season = seasonSelect.value;
+
+            if (!file) {
+                alert('しゃしん・がぞうを えらんでください。');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const newItem = {
+                    id: 'custom_' + Date.now(),
+                    name: name,
+                    season: season,
+                    imageDataUrl: e.target.result
+                };
+                customItems.push(newItem);
+                saveCustomItems();
+
+                // フォームリセット
+                fileInput.value = '';
+                nameInput.value = '';
+                sound.playTap();
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 設定モーダル制御
+        const modalSettings = document.getElementById('modal-settings');
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            sound.playTap();
+            modalSettings.classList.remove('hidden');
+        });
+
+        document.getElementById('btn-close-settings').addEventListener('click', () => {
+            sound.playTap();
+            modalSettings.classList.add('hidden');
+            if (state.currentScreen === 'game') {
+                loadNextQuestion();
+            }
+        });
+
+        // 出題モード変更
+        document.getElementById('setting-mode').addEventListener('change', (e) => {
+            state.mode = e.target.value;
+        });
+
+        // 選択肢数切り替え (2択 / 3択 / 4択)
+        const btnCnt2 = document.getElementById('choice-cnt-2');
+        const btnCnt3 = document.getElementById('choice-cnt-3');
+        const btnCnt4 = document.getElementById('choice-cnt-4');
+
+        function updateChoiceCountButtons(count) {
+            state.optionCount = count;
+            [btnCnt2, btnCnt3, btnCnt4].forEach(btn => {
+                btn.className = 'btn-choice-cnt p-3 text-base md:text-lg font-bold rounded-2xl border-2 border-gray-300 bg-gray-50 text-gray-600';
+            });
+            if (count === 2) {
+                btnCnt2.className = 'btn-choice-cnt p-3 text-base md:text-lg font-bold rounded-2xl border-2 border-emerald-500 bg-emerald-100 text-emerald-800';
+            } else if (count === 3) {
+                btnCnt3.className = 'btn-choice-cnt p-3 text-base md:text-lg font-bold rounded-2xl border-2 border-emerald-500 bg-emerald-100 text-emerald-800';
+            } else {
+                btnCnt4.className = 'btn-choice-cnt p-3 text-base md:text-lg font-bold rounded-2xl border-2 border-emerald-500 bg-emerald-100 text-emerald-800';
+            }
+        }
+
+        btnCnt2.addEventListener('click', () => { sound.playTap(); updateChoiceCountButtons(2); });
+        btnCnt3.addEventListener('click', () => { sound.playTap(); updateChoiceCountButtons(3); });
+        btnCnt4.addEventListener('click', () => { sound.playTap(); updateChoiceCountButtons(4); });
+
+        // 音声読み上げ切り替え
+        document.getElementById('setting-speech').addEventListener('change', (e) => {
+            state.speechEnabled = e.target.checked;
+        });
+
+        // タッチでの誤スクロール・ダブルタップズーム防止処理
+        document.addEventListener('touchmove', (e) => {
+            if (e.scale !== 1) { e.preventDefault(); }
+        }, { passive: false });
+
+        // 初期化処理実行
+        window.addEventListener('load', () => {
+            loadCustomItems();
+        });
+    </script>
+</body>
+</html>
