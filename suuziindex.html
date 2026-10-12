@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <!-- iPad / PWA / ズーム防止用メタタグ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>すうじをかこう（でっかいばん）</title>
+
+  <!-- Google Fonts: Klee One 読み込み -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* 全体スタイリング */
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Klee One', cursive, sans-serif;
+      background-color: #f0f9ff;
+      color: #2d3748;
+    }
+
+    /* 画面切り替え用 */
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      transition: opacity 0.3s ease;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ボタン共通デザイン */
+    .btn {
+      font-family: 'Klee One', cursive, sans-serif;
+      font-weight: 600;
+      border: none;
+      border-radius: 20px;
+      padding: 12px 24px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
+      transition: transform 0.1s, box-shadow 0.1s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary {
+      background-color: #48bb78;
+      color: white;
+    }
+
+    .btn-secondary {
+      background-color: #edf2f7;
+      color: #4a5568;
+      border: 2px solid #cbd5e0;
+    }
+
+    .btn-info {
+      background-color: #38bdf8;
+      color: white;
+    }
+
+    .btn-icon {
+      width: 56px;
+      height: 56px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 1.6rem;
+    }
+
+    /* スタート画面 */
+    #start-screen {
+      background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+      justify-content: center;
+      gap: 30px;
+      text-align: center;
+    }
+
+    .title-box {
+      background: white;
+      padding: 24px 40px;
+      border-radius: 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      border: 4px solid #38bdf8;
+    }
+
+    .title-text {
+      font-size: 2.8rem;
+      color: #0284c7;
+      margin: 0 0 10px 0;
+      font-weight: 600;
+    }
+
+    .subtitle-text {
+      font-size: 1.2rem;
+      color: #64748b;
+      margin: 0;
+    }
+
+    .btn-start {
+      font-size: 2.2rem;
+      padding: 20px 60px;
+      background-color: #ff6b81;
+      color: white;
+      border-radius: 50px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* 設定ボタン & バッジ */
+    .gear-container {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+    }
+
+    .gear-badge {
+      position: absolute;
+      bottom: -24px;
+      right: 0;
+      background-color: #ef4444;
+      color: white;
+      font-size: 0.8rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    .gear-badge.show {
+      opacity: 1;
+    }
+
+    /* メイン画面ヘッダー */
+    .header {
+      width: 100%;
+      max-width: 650px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .number-selector {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .num-display {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #0284c7;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    /* メイン描画ステージ */
+    .stage-container {
+      position: relative;
+      width: 92vw;
+      max-width: 520px;
+      aspect-ratio: 1 / 1;
+      margin: auto 0;
+      background: white;
+      border-radius: 28px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+      border: 4px solid #cbd5e1;
+      overflow: hidden;
+    }
+
+    /* ガイドリセットボタン */
+    .reset-guide-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 30;
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px solid #38bdf8;
+      color: #0284c7;
+      border-radius: 14px;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .reset-guide-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* トーストメッセージ */
+    .toast-msg {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #ef4444;
+      color: white;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 50;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      white-space: nowrap;
+    }
+
+    .toast-msg.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(4px);
+    }
+
+    /* 方眼線のCSS表現 */
+    .grid-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background-image: 
+        linear-gradient(to right, #e2e8f0 1px, transparent 1px),
+        linear-gradient(to bottom, #e2e8f0 1px, transparent 1px);
+      background-size: 50% 50%;
+    }
+
+    .grid-background::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #cbd5e1;
+    }
+
+    .grid-background::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 2px;
+      height: 100%;
+      background-color: #cbd5e1;
+    }
+
+    svg.svg-layer, canvas.canvas-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas.canvas-layer {
+      touch-action: none;
+      z-index: 10;
+    }
+
+    /* 凡例 */
+    .legend-bar {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* ツールバー */
+    .toolbar {
+      width: 100%;
+      max-width: 650px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: white;
+      padding: 12px 18px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .color-picker {
+      display: flex;
+      gap: 10px;
+    }
+
+    .color-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
+
+    .color-btn.selected {
+      transform: scale(1.15);
+      border-color: #334155;
+    }
+
+    .opacity-slider-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      font-size: 0.95rem;
+    }
+
+    .opacity-slider-container input {
+      flex: 1;
+      height: 8px;
+    }
+
+    /* モーダル共通 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .modal-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .celebration-card {
+      background: white;
+      padding: 24px;
+      border-radius: 30px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      max-width: 90%;
+      width: 360px;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.5); }
+      100% { transform: scale(1); }
+    }
+
+    .hanamaru-icon {
+      font-size: 4.5rem;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .celebration-title {
+      font-size: 1.6rem;
+      color: #e11d48;
+      margin: 6px 0 12px 0;
+      font-weight: bold;
+    }
+
+    .user-result-box {
+      width: 200px;
+      height: 200px;
+      margin: 10px auto;
+      border: 3px dashed #cbd5e1;
+      border-radius: 16px;
+      background-color: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .user-result-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* 教員用設定モーダル & 記録モーダル */
+    .settings-card {
+      background: white;
+      padding: 24px;
+      border-radius: 24px;
+      width: 90%;
+      max-width: 520px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .settings-title {
+      font-size: 1.5rem;
+      color: #1e293b;
+      margin-top: 0;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 10px;
+      text-align: center;
+    }
+
+    .setting-group {
+      margin-bottom: 20px;
+    }
+
+    .setting-label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #334155;
+    }
+
+    .setting-control {
+      width: 100%;
+      padding: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .number-checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .num-check-item {
+      display: block;
+      cursor: pointer;
+    }
+
+    .num-check-input {
+      display: none;
+    }
+
+    .num-check-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0;
+      border: 2px solid #cbd5e1;
+      border-radius: 10px;
+      background-color: #f8fafc;
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #64748b;
+      transition: all 0.15s ease;
+    }
+
+    .num-check-input:checked + .num-check-btn {
+      background-color: #38bdf8;
+      color: white;
+      border-color: #0284c7;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+    }
+
+    /* 記録カードグリッド表示 */
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 12px;
+      max-height: 50vh;
+      overflow-y: auto;
+      padding: 6px;
+    }
+
+    .history-item {
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 8px;
+      background: #fafafa;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-item img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .history-item-title {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #0284c7;
+      margin: 4px 0;
+    }
+
+    .history-item-date {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .history-item-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+      width: 100%;
+    }
+
+    .history-item-btn {
+      flex: 1;
+      padding: 4px 0;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* 印刷エリアの画面表示隠し */
+    #print-area {
+      display: none;
+    }
+
+    /* 印刷スタイル設定（数字だけをシンプルに配置） */
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #print-area, #print-area * {
+        visibility: visible !important;
+      }
+      #print-area {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr);
+        grid-auto-rows: 125mm;
+        gap: 10mm;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+      }
+      .print-card {
+        border: 2px dashed #475569;
+        border-radius: 16px;
+        padding: 6mm;
+        text-align: center;
+        background: white;
+        box-sizing: border-box;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 125mm;
+      }
+      .print-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- スタート画面 -->
+  <div id="start-screen" class="screen">
+    <div class="gear-container">
+      <button class="btn btn-secondary btn-icon" id="start-gear-btn" aria-label="設定">⚙️</button>
+      <div id="gear-badge-start" class="gear-badge">あと2かい</div>
+    </div>
+
+    <div class="title-box">
+      <h1 class="title-text">すうじをかこう</h1>
+      <p class="subtitle-text">なぞって すうじの れんしゅう</p>
+    </div>
+
+    <div style="font-size: 3rem;">✏️ 1️⃣ 2️⃣ 3️⃣ ⭐</div>
+
+    <button class="btn btn-start" id="start-btn">スタート！</button>
+  </div>
+
+  <!-- メイン操作画面 -->
+  <div id="main-screen" class="screen hidden">
+    <!-- ヘッダー -->
+    <div class="header">
+      <button class="btn btn-secondary btn-icon" id="home-btn" aria-label="ホーム">🏠</button>
+
+      <button class="btn btn-info" id="history-btn" style="padding: 8px 14px; font-size: 1rem;">📇 きろく</button>
+      
+      <div class="number-selector">
+        <button class="btn btn-secondary btn-icon" id="prev-num-btn">⬅️</button>
+        <div class="num-display" id="current-num-text">1</div>
+        <button class="btn btn-secondary btn-icon" id="next-num-btn">➡️</button>
+      </div>
+
+      <div style="position: relative;">
+        <button class="btn btn-secondary btn-icon" id="main-gear-btn" aria-label="設定">⚙️</button>
+        <div id="gear-badge-main" class="gear-badge">あと2かい</div>
+      </div>
+    </div>
+
+    <!-- メイン描画ステージ -->
+    <div class="stage-container" id="stage-container">
+      <button class="reset-guide-btn" id="reset-guide-btn">📍 ガイドをさいしょから</button>
+      <div id="toast-msg" class="toast-msg">みどりの まる（はじめ）から かこう！</div>
+      <div class="grid-background"></div>
+      
+      <svg class="svg-layer" id="svg-layer" viewBox="0 0 200 200">
+        <g id="svg-model-group"></g>
+        <g id="svg-markers-group"></g>
+        <circle id="guide-dot" r="10" fill="#ff4757" stroke="#ffffff" stroke-width="3" opacity="0"/>
+      </svg>
+
+      <canvas class="canvas-layer" id="draw-canvas"></canvas>
+    </div>
+
+    <!-- 凡例 -->
+    <div class="legend-bar">
+      <div class="legend-item"><span class="legend-dot" style="background-color: #10b981;"></span> 始点（はじめ）</div>
+      <div class="legend-item"><span class="legend-dot" style="background-color: #ef4444;"></span> 終点（おわり）</div>
+    </div>
+
+    <!-- ツールバー -->
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <div class="color-picker" id="color-picker">
+          <button class="color-btn selected" data-color="#ff4757" style="background:#ff4757;"></button>
+          <button class="color-btn" data-color="#1e90ff" style="background:#1e90ff;"></button>
+          <button class="color-btn" data-color="#2ed573" style="background:#2ed573;"></button>
+          <button class="color-btn" data-color="#ffa502" style="background:#ffa502;"></button>
+          <button class="color-btn" data-color="#2f3542" style="background:#2f3542;"></button>
+        </div>
+
+        <button class="btn btn-secondary" id="clear-btn">🧹 けす</button>
+      </div>
+
+      <div class="toolbar-row">
+        <div class="opacity-slider-container">
+          <span>☀️ おてほんのこさ:</span>
+          <input type="range" id="quick-opacity" min="0.1" max="1.0" step="0.1" value="0.5">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 正解達成モーダル -->
+  <div class="modal-overlay" id="celebration-modal">
+    <div class="celebration-card">
+      <div class="hanamaru-icon">💮</div>
+      <h2 class="celebration-title">たいへん よくできました！</h2>
+      
+      <div style="font-weight: bold; color: #475569; font-size: 0.95rem;">あなたが かいた すうじ</div>
+      <div class="user-result-box">
+        <img id="user-result-img" class="user-result-img" alt="自分が書いた数字">
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+        <button class="btn btn-secondary" id="retry-btn">もういちど 🔁</button>
+        <button class="btn btn-primary" id="next-stage-btn">つぎへ ➡️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 記録（カード一覧）モーダル -->
+  <div class="modal-overlay" id="history-modal">
+    <div class="settings-card">
+      <h2 class="settings-title">📇 かいたきろく・カード</h2>
+
+      <div id="history-empty-msg" style="text-align: center; color: #64748b; padding: 20px 0;">
+        まだ きろくが ありません。<br>すうじを なぞって かいてみよう！
+      </div>
+
+      <div class="history-grid" id="history-grid"></div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+        <button class="btn btn-primary" id="print-all-btn" style="flex:1;">🖨️ カードをいんさつ</button>
+        <button class="btn btn-secondary" id="clear-history-btn">🗑️ 全削除</button>
+        <button class="btn btn-secondary" id="close-history-btn" style="flex:1;">とじる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 教員用設定モーダル -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="settings-card">
+      <h2 class="settings-title">⚙️ せんせい用 設定</h2>
+
+      <div class="setting-group">
+        <label class="setting-label">しゅつだいする すうじ</label>
+        <div class="number-checkbox-grid" id="number-checkbox-grid"></div>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">判定のきびしさ</label>
+        <select id="setting-strictness" class="setting-control">
+          <option value="strict" selected>きびしい（書き順・終点チェック厳格）</option>
+          <option value="normal">ふつう（標準判定）</option>
+          <option value="easy">やさしい（少し広めの判定）</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">おてほんの濃さ (初期値)</label>
+        <input type="range" id="setting-opacity" class="setting-control" min="0.1" max="1.0" step="0.1" value="0.5">
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">書き順ガイドのスピード</label>
+        <select id="setting-speed" class="setting-control">
+          <option value="very_slow">とてもおそい（じっくり）</option>
+          <option value="slow">おそい</option>
+          <option value="normal" selected>ふつう</option>
+          <option value="fast">はやい</option>
+          <option value="none">ガイドなし</option>
+        </select>
+      </div>
+
+      <div class="setting-group toggle-switch">
+        <span class="setting-label" style="margin:0;">できたときに自動で次へ</span>
+        <input type="checkbox" id="setting-auto-advance" style="width: 24px; height: 24px;">
+      </div>
+
+      <div class="setting-group toggle-switch">
+        <span class="setting-label" style="margin:0;">効果音 (Web Audio)</span>
+        <input type="checkbox" id="setting-sound" style="width: 24px; height: 24px;" checked>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 24px;">
+        <button class="btn btn-secondary" id="reset-settings-btn" style="flex:1;">初期化</button>
+        <button class="btn btn-primary" id="close-settings-btn" style="flex:1;">とじる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 印刷用領域（カード表示） -->
+  <div id="print-area"></div>
+
+  <script>
+    /* ===================================================
+       1. 数字パスデータ定義 (10を追加・1は縦直線)
+       =================================================== */
+    const NUMBERS_DATA = [
+      { num: 0, label: "０", paths: ["M 100 45 C 58 45 58 155 100 155 C 142 155 142 45 100 45 Z"] },
+      { num: 1, label: "１", paths: ["M 100 40 L 100 160"] },
+      { num: 2, label: "２", paths: ["M 68 70 C 68 40 132 40 132 78 L 68 155 L 135 155"] },
+      { num: 3, label: "３", paths: ["M 68 52 C 105 38 135 52 100 92 C 138 96 138 158 68 152"] },
+      { num: 4, label: "４", paths: ["M 125 42 L 65 115 L 140 115", "M 120 75 L 120 158"] },
+      { num: 5, label: "５", paths: ["M 75 48 L 71 88 C 80 80 138 80 135 125 C 130 158 68 158 68 140", "M 75 48 L 132 48"] },
+      { num: 6, label: "６", paths: ["M 128 48 C 80 62 62 105 62 130 C 62 158 132 158 132 128 C 132 98 62 98 62 130"] },
+      { num: 7, label: "７", paths: ["M 68 48 L 68 80", "M 68 48 L 135 48 L 82 158"] },
+      { num: 8, label: "８", paths: ["M 100 45 C 80 45 72 62 72 75 C 72 88 84 96 100 102 C 116 108 128 116 128 130 C 128 144 118 155 100 155 C 82 155 72 144 72 130 C 72 116 84 108 100 102 C 116 96 128 88 128 75 C 128 62 120 45 100 45 Z"] },
+      { num: 9, label: "９", paths: ["M 130 70 C 130 45 70 45 70 70 C 70 95 130 95 130 70 L 98 160"] },
+      { num: 10, label: "１０", paths: ["M 65 45 L 65 155", "M 135 45 C 100 45 100 155 135 155 C 170 155 170 45 135 45 Z"] }
+    ];
+
+    /* 判定難易度パラメータ */
+    const STRICTNESS_CONFIG = {
+      strict: { startRadius: 28, hitRadius: 20, requiredRatio: 0.75, endRadius: 28 },
+      normal: { startRadius: 36, hitRadius: 26, requiredRatio: 0.65, endRadius: 36 },
+      easy: { startRadius: 44, hitRadius: 32, requiredRatio: 0.55, endRadius: 44 }
+    };
+
+    /* ===================================================
+       2. 設定と状態管理 (localStorage)
+       =================================================== */
+    const STORAGE_KEY = 'app_suuji_kakou_settings';
+    const RECORDS_KEY = 'app_suuji_kakou_records';
+
+    const defaultSettings = {
+      opacity: 0.5,
+      strictness: 'strict',
+      guideSpeed: 'normal',
+      autoAdvance: false,
+      soundEnabled: true,
+      penColor: '#ff4757',
+      penWidth: 22,
+      enabledNumbers: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    };
+
+    let settings = { ...defaultSettings };
+    let savedRecords = [];
+
+    function loadSettings() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          settings = { ...defaultSettings, ...JSON.parse(saved) };
+        }
+        const recs = localStorage.getItem(RECORDS_KEY);
+        if (recs) {
+          savedRecords = JSON.parse(recs);
+        }
+      } catch(e) {
+        console.error("localStorage load error", e);
+      }
+    }
+
+    function saveSettings() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      } catch(e) {
+        console.error("localStorage save error", e);
+      }
+    }
+
+    function saveRecordsToStorage() {
+      try {
+        localStorage.setItem(RECORDS_KEY, JSON.stringify(savedRecords));
+      } catch(e) {
+        console.error("records save error", e);
+      }
+    }
+
+    /* ===================================================
+       3. Web Audio API 効果音合成器
+       =================================================== */
+    class SoundSynth {
+      constructor() { this.ctx = null; }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTap() {
+        if (!settings.soundEnabled || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(500, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.05);
+          gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.05);
+        } catch(e){}
+      }
+
+      playSuccess() {
+        if (!settings.soundEnabled || !this.ctx) return;
+        try {
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = this.ctx.currentTime + idx * 0.1;
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(0.3, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.35);
+          });
+        } catch(e){}
+      }
+
+      playClear() {
+        if (!settings.soundEnabled || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.12);
+          gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.12);
+        } catch(e){}
+      }
+
+      playErr() {
+        if (!settings.soundEnabled || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+          osc.frequency.setValueAtTime(180, this.ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.2);
+        } catch(e){}
+      }
+    }
+
+    const audio = new SoundSynth();
+
+    /* ===================================================
+       4. アプリ主要状態変数 & UI参照
+       =================================================== */
+    let currentNumIndex = 1;
+    let strokeCheckpoints = [];
+    let isDrawing = false;
+    let isCompleted = false;
+    let animFrameId = null;
+    let guideProgress = 0;
+
+    let currentStrokeIdx = 0;
+    let isValidStrokeStart = false;
+
+    let validStrokes = [];
+    let currentStroke = [];
+
+    const NUM_SCALE = 1.30;
+    const transformPt = (pt) => ({
+      x: 100 + (pt.x - 100) * NUM_SCALE,
+      y: 100 + (pt.y - 100) * NUM_SCALE
+    });
+
+    const startScreen = document.getElementById('start-screen');
+    const mainScreen = document.getElementById('main-screen');
+    const startBtn = document.getElementById('start-btn');
+    const homeBtn = document.getElementById('home-btn');
+    const prevNumBtn = document.getElementById('prev-num-btn');
+    const nextNumBtn = document.getElementById('next-num-btn');
+    const currentNumText = document.getElementById('current-num-text');
+    const clearBtn = document.getElementById('clear-btn');
+    const quickOpacity = document.getElementById('quick-opacity');
+    const resetGuideBtn = document.getElementById('reset-guide-btn');
+
+    const svgModelGroup = document.getElementById('svg-model-group');
+    const svgMarkersGroup = document.getElementById('svg-markers-group');
+    const guideDot = document.getElementById('guide-dot');
+    const canvas = document.getElementById('draw-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const celebrationModal = document.getElementById('celebration-modal');
+    const userResultImg = document.getElementById('user-result-img');
+    const retryBtn = document.getElementById('retry-btn');
+    const nextStageBtn = document.getElementById('next-stage-btn');
+
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const resetSettingsBtn = document.getElementById('reset-settings-btn');
+    const numberCheckboxGrid = document.getElementById('number-checkbox-grid');
+
+    const historyBtn = document.getElementById('history-btn');
+    const historyModal = document.getElementById('history-modal');
+    const historyGrid = document.getElementById('history-grid');
+    const historyEmptyMsg = document.getElementById('history-empty-msg');
+    const closeHistoryBtn = document.getElementById('close-history-btn');
+    const printAllBtn = document.getElementById('print-all-btn');
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    const printArea = document.getElementById('print-area');
+
+    let toastTimeout = null;
+    function showToast(text, duration = 2500) {
+      const toast = document.getElementById('toast-msg');
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, duration);
+    }
+
+    function hideToast() {
+      document.getElementById('toast-msg').classList.remove('show');
+    }
+
+    /* ===================================================
+       5. 有効数字の管理・切り替えロジック
+       =================================================== */
+    function getEnabledIndices() {
+      const enabled = NUMBERS_DATA
+        .map((d, index) => ({ num: d.num, index }))
+        .filter(item => settings.enabledNumbers.includes(item.num))
+        .map(item => item.index);
+
+      return enabled.length > 0 ? enabled : NUMBERS_DATA.map((_, i) => i);
+    }
+
+    function getNextEnabledIndex(currentIdx, step) {
+      const enabledIndices = getEnabledIndices();
+      let pos = enabledIndices.indexOf(currentIdx);
+      if (pos === -1) pos = 0;
+      const nextPos = (pos + step + enabledIndices.length) % enabledIndices.length;
+      return enabledIndices[nextPos];
+    }
+
+    /* ===================================================
+       6. トリプルタップ判定（設定ボタン保護）
+       =================================================== */
+    let gearTapTimes = [];
+    let badgeTimeout = null;
+
+    function handleGearTap(badgeId) {
+      audio.init();
+      audio.playTap();
+
+      const now = Date.now();
+      gearTapTimes.push(now);
+      gearTapTimes = gearTapTimes.filter(t => now - t < 1000);
+
+      const remaining = 3 - gearTapTimes.length;
+      const badge = document.getElementById(badgeId);
+
+      if (remaining > 0) {
+        badge.textContent = `あと${remaining}かい`;
+        badge.classList.add('show');
+        clearTimeout(badgeTimeout);
+        badgeTimeout = setTimeout(() => badge.classList.remove('show'), 1200);
+      } else {
+        gearTapTimes = [];
+        badge.classList.remove('show');
+        openSettingsModal();
+      }
+    }
+
+    document.getElementById('start-gear-btn').addEventListener('click', () => handleGearTap('gear-badge-start'));
+    document.getElementById('main-gear-btn').addEventListener('click', () => handleGearTap('gear-badge-main'));
+
+    /* ===================================================
+       7. 数字の読み込み・SVG描画・始点/終点マーク表示
+       =================================================== */
+    function loadNumber(index) {
+      const enabledIndices = getEnabledIndices();
+      if (!enabledIndices.includes(index)) {
+        index = enabledIndices[0];
+      }
+
+      currentNumIndex = index;
+      const data = NUMBERS_DATA[currentNumIndex];
+      currentNumText.textContent = data.label;
+
+      svgModelGroup.innerHTML = '';
+      svgMarkersGroup.innerHTML = '';
+      strokeCheckpoints = [];
+      validStrokes = [];
+      currentStroke = [];
+      currentStrokeIdx = 0;
+
+      const existingMarkerPoints = [];
+
+      data.paths.forEach((d, strokeIdx) => {
+        const bgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        bgPath.setAttribute('d', d);
+        bgPath.setAttribute('fill', 'none');
+        
+        // 画数ごとに色を変更（1画目：グレー, 2画目：淡いグリーン）
+        const strokeColors = ['#a0a0a0', '#a8e6cf'];
+        const strokeColor = strokeColors[strokeIdx] || '#a0a0a0';
+        bgPath.setAttribute('stroke', strokeColor);
+
+        bgPath.setAttribute('stroke-width', '28');
+        bgPath.setAttribute('stroke-linecap', 'round');
+        bgPath.setAttribute('stroke-linejoin', 'round');
+        bgPath.setAttribute('opacity', settings.opacity);
+        bgPath.setAttribute('transform', 'translate(100, 100) scale(1.3) translate(-100, -100)');
+        bgPath.classList.add('model-path');
+        svgModelGroup.appendChild(bgPath);
+
+        const dashPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        dashPath.setAttribute('d', d);
+        dashPath.setAttribute('fill', 'none');
+        dashPath.setAttribute('stroke', '#ffffff');
+        dashPath.setAttribute('stroke-width', '2.5');
+        dashPath.setAttribute('stroke-dasharray', '6 6');
+        dashPath.setAttribute('stroke-linecap', 'round');
+        dashPath.setAttribute('transform', 'translate(100, 100) scale(1.3) translate(-100, -100)');
+        svgModelGroup.appendChild(dashPath);
+
+        const totalLen = bgPath.getTotalLength();
+        
+        let startLen = 0;
+        let startPt = transformPt(bgPath.getPointAtLength(startLen));
+        const isStartTooClose = existingMarkerPoints.some(pt => Math.hypot(pt.x - startPt.x, pt.y - startPt.y) < 24);
+        
+        if (isStartTooClose) {
+          startLen = Math.min(22, totalLen * 0.35);
+          startPt = transformPt(bgPath.getPointAtLength(startLen));
+        }
+        existingMarkerPoints.push(startPt);
+
+        const endPt = transformPt(bgPath.getPointAtLength(totalLen));
+        existingMarkerPoints.push(endPt);
+
+        // 始点マーカー（緑色）
+        const startCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        startCircle.setAttribute('cx', startPt.x);
+        startCircle.setAttribute('cy', startPt.y);
+        startCircle.setAttribute('r', '14');
+        startCircle.setAttribute('fill', '#10b981');
+        startCircle.setAttribute('stroke', '#ffffff');
+        startCircle.setAttribute('stroke-width', '3');
+        svgMarkersGroup.appendChild(startCircle);
+
+        const startText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        startText.setAttribute('x', startPt.x);
+        startText.setAttribute('y', startPt.y + 5);
+        startText.setAttribute('fill', '#ffffff');
+        startText.setAttribute('font-size', '13');
+        startText.setAttribute('font-weight', 'bold');
+        startText.setAttribute('text-anchor', 'middle');
+        startText.textContent = (strokeIdx + 1).toString();
+        svgMarkersGroup.appendChild(startText);
+
+        // 終点マーカー（赤色）
+        const endCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        endCircle.setAttribute('cx', endPt.x);
+        endCircle.setAttribute('cy', endPt.y);
+        endCircle.setAttribute('r', '11');
+        endCircle.setAttribute('fill', '#ef4444');
+        endCircle.setAttribute('stroke', '#ffffff');
+        endCircle.setAttribute('stroke-width', '2.5');
+        svgMarkersGroup.appendChild(endCircle);
+
+        // チェックポイント生成
+        const strokePoints = [];
+        const step = 2.0;
+
+        for (let len = 0; len <= totalLen; len += step) {
+          const rawPt = bgPath.getPointAtLength(len);
+          const pt = transformPt(rawPt);
+          strokePoints.push({
+            x: pt.x,
+            y: pt.y,
+            strokeIdx: strokeIdx,
+            hit: false
+          });
+        }
+        strokeCheckpoints.push(strokePoints);
+      });
+
+      clearCanvas();
+      isCompleted = false;
+      guideProgress = 0;
+      hideToast();
+    }
+
+    /* ===================================================
+       8. アニメーションガイド
+       =================================================== */
+    function animateGuide() {
+      if (settings.guideSpeed === 'none' || isCompleted) {
+        guideDot.setAttribute('opacity', '0');
+      } else {
+        const paths = svgModelGroup.querySelectorAll('.model-path');
+        if (paths.length > 0 && currentStrokeIdx < paths.length) {
+          const path = paths[currentStrokeIdx];
+          const len = path.getTotalLength();
+          const speedMap = { very_slow: 0.002, slow: 0.005, normal: 0.01, fast: 0.02 };
+          const step = speedMap[settings.guideSpeed] || 0.01;
+          
+          guideProgress += step;
+          if (guideProgress > 1) guideProgress = 0;
+
+          const pt = transformPt(path.getPointAtLength(guideProgress * len));
+          guideDot.setAttribute('cx', pt.x);
+          guideDot.setAttribute('cy', pt.y);
+          guideDot.setAttribute('opacity', '0.85');
+        } else {
+          guideDot.setAttribute('opacity', '0');
+        }
+      }
+      animFrameId = requestAnimationFrame(animateGuide);
+    }
+
+    // ガイドリセットボタン処理
+    resetGuideBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playTap();
+      guideProgress = 0;
+    });
+
+    /* ===================================================
+       9. キャンバス描画処理
+       =================================================== */
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      redrawCanvas();
+    }
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scale = 200 / rect.width;
+      return {
+        x: (e.clientX - rect.left) * scale,
+        y: (e.clientY - rect.top) * scale
+      };
+    }
+
+    function redrawCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      const scale = rect.width / 200;
+
+      // 過去に確定した画を描画
+      validStrokes.forEach(stroke => {
+        if (stroke.points.length < 2) return;
+        ctx.beginPath();
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = settings.penWidth * (rect.width / 500);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(stroke.points[0].x * scale, stroke.points[0].y * scale);
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x * scale, stroke.points[i].y * scale);
+        }
+        ctx.stroke();
+      });
+
+      // 現在描画中の線を描画
+      if (currentStroke.length > 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = settings.penColor;
+        ctx.lineWidth = settings.penWidth * (rect.width / 500);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(currentStroke[0].x * scale, currentStroke[0].y * scale);
+        for (let i = 1; i < currentStroke.length; i++) {
+          ctx.lineTo(currentStroke[i].x * scale, currentStroke[i].y * scale);
+        }
+        ctx.stroke();
+      }
+    }
+
+    function clearCanvas() {
+      validStrokes = [];
+      currentStroke = [];
+      currentStrokeIdx = 0;
+      if (strokeCheckpoints.length > 0) {
+        strokeCheckpoints.forEach(cps => cps.forEach(cp => cp.hit = false));
+      }
+      redrawCanvas();
+    }
+
+    /* ===================================================
+       10. タッチ/ポインターイベント処理 & 記録自動保存
+       =================================================== */
+    function handlePointerDown(e) {
+      if (isCompleted || currentStrokeIdx >= strokeCheckpoints.length) return;
+      audio.init();
+
+      const pos = getCanvasCoords(e);
+      const cps = strokeCheckpoints[currentStrokeIdx];
+      if (!cps || cps.length === 0) return;
+
+      const startPt = cps[0];
+      const cfg = STRICTNESS_CONFIG[settings.strictness];
+      const dist = Math.hypot(pos.x - startPt.x, pos.y - startPt.y);
+
+      if (dist <= cfg.startRadius) {
+        isValidStrokeStart = true;
+        isDrawing = true;
+        currentStroke = [pos];
+        cps.forEach(cp => cp.hit = false);
+        cps[0].hit = true;
+        hideToast();
+      } else {
+        isValidStrokeStart = false;
+        isDrawing = false;
+        showToast("みどりの まる（はじめ）から かこう！");
+        audio.playErr();
+      }
+    }
+
+    function handlePointerMove(e) {
+      if (!isDrawing || !isValidStrokeStart) return;
+      const pos = getCanvasCoords(e);
+      currentStroke.push(pos);
+
+      const cps = strokeCheckpoints[currentStrokeIdx];
+      const cfg = STRICTNESS_CONFIG[settings.strictness];
+
+      cps.forEach(cp => {
+        if (!cp.hit && Math.hypot(pos.x - cp.x, pos.y - cp.y) <= cfg.hitRadius) {
+          cp.hit = true;
+        }
+      });
+
+      redrawCanvas();
+    }
+
+    // 完成画像をきれいに生成（背景＋線）
+    function generateCleanRecordImage() {
+      const recCanvas = document.createElement('canvas');
+      recCanvas.width = 400;
+      recCanvas.height = 400;
+      const rctx = recCanvas.getContext('2d');
+
+      // 背景（白）
+      rctx.fillStyle = '#ffffff';
+      rctx.fillRect(0, 0, 400, 400);
+
+      // うっすら十字線（マス目）
+      rctx.strokeStyle = '#e2e8f0';
+      rctx.lineWidth = 2;
+      rctx.beginPath();
+      rctx.moveTo(200, 0); rctx.lineTo(200, 400);
+      rctx.moveTo(0, 200); rctx.lineTo(400, 200);
+      rctx.stroke();
+
+      // 手本線を薄く再現
+      const data = NUMBERS_DATA[currentNumIndex];
+      data.paths.forEach((d) => {
+        const p = new Path2D(d);
+        rctx.save();
+        rctx.translate(200, 200);
+        rctx.scale(1.3 * 2, 1.3 * 2);
+        rctx.translate(-100, -100);
+        rctx.strokeStyle = '#cbd5e1';
+        rctx.lineWidth = 28;
+        rctx.lineCap = 'round';
+        rctx.lineJoin = 'round';
+        rctx.stroke(p);
+        rctx.restore();
+      });
+
+      // 子どもの手書きを描画
+      rctx.drawImage(canvas, 0, 0, 400, 400);
+
+      return recCanvas.toDataURL('image/png');
+    }
+
+    function handlePointerUp() {
+      if (!isDrawing) return;
+      isDrawing = false;
+
+      if (isValidStrokeStart) {
+        const cps = strokeCheckpoints[currentStrokeIdx];
+        const cfg = STRICTNESS_CONFIG[settings.strictness];
+        const lastPt = cps[cps.length - 1];
+        const userLastPt = currentStroke[currentStroke.length - 1];
+
+        const endDist = Math.hypot(userLastPt.x - lastPt.x, userLastPt.y - lastPt.y);
+        const hitCount = cps.filter(cp => cp.hit).length;
+        const ratio = hitCount / cps.length;
+
+        if (endDist <= cfg.endRadius && ratio >= cfg.requiredRatio) {
+          validStrokes.push({
+            points: [...currentStroke],
+            color: settings.penColor
+          });
+          currentStroke = [];
+          currentStrokeIdx++;
+
+          if (currentStrokeIdx >= strokeCheckpoints.length) {
+            // すべての画が完了
+            isCompleted = true;
+            audio.playSuccess();
+            
+            // きれいなカード画像を生成＆保存
+            const recordImgData = generateCleanRecordImage();
+            const now = new Date();
+            const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            savedRecords.unshift({
+              id: Date.now(),
+              num: NUMBERS_DATA[currentNumIndex].num,
+              label: NUMBERS_DATA[currentNumIndex].label,
+              img: recordImgData,
+              date: dateStr
+            });
+            saveRecordsToStorage();
+
+            // 結果画像の表示
+            userResultImg.src = recordImgData;
+            celebrationModal.classList.add('show');
+
+            if (settings.autoAdvance) {
+              setTimeout(() => {
+                celebrationModal.classList.remove('show');
+                loadNumber(getNextEnabledIndex(currentNumIndex, 1));
+              }, 1800);
+            }
+          } else {
+            audio.playTap();
+          }
+        } else {
+          // 判定不合格
+          currentStroke = [];
+          cps.forEach(cp => cp.hit = false);
+          showToast("もういちど なぞってみよう！");
+          audio.playErr();
+        }
+        redrawCanvas();
+      }
+    }
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+
+    /* ===================================================
+       11. 記録一覧モーダル & 印刷（カード）機能
+       =================================================== */
+    function renderHistoryUI() {
+      historyGrid.innerHTML = '';
+      if (savedRecords.length === 0) {
+        historyEmptyMsg.style.display = 'block';
+        return;
+      }
+      historyEmptyMsg.style.display = 'none';
+
+      savedRecords.forEach(rec => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+          <div>
+            <div class="history-item-title">すうじ: ${rec.label}</div>
+            <img src="${rec.img}" alt="${rec.label}">
+            <div class="history-item-date">${rec.date}</div>
+          </div>
+          <div class="history-item-actions">
+            <button class="history-item-btn btn-primary download-btn">🖼️ ほぞん</button>
+            <button class="history-item-btn btn-secondary del-btn">🗑️</button>
+          </div>
+        `;
+
+        // 画像ダウンロード機能
+        item.querySelector('.download-btn').addEventListener('click', () => {
+          const a = document.createElement('a');
+          a.href = rec.img;
+          a.download = `すうじ_${rec.num}_${rec.id}.png`;
+          a.click();
+        });
+
+        // 個別削除
+        item.querySelector('.del-btn').addEventListener('click', () => {
+          savedRecords = savedRecords.filter(r => r.id !== rec.id);
+          saveRecordsToStorage();
+          renderHistoryUI();
+        });
+
+        historyGrid.appendChild(item);
+      });
+    }
+
+    historyBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playTap();
+      renderHistoryUI();
+      historyModal.classList.add('show');
+    });
+
+    closeHistoryBtn.addEventListener('click', () => {
+      historyModal.classList.remove('show');
+    });
+
+    clearHistoryBtn.addEventListener('click', () => {
+      if (confirm('記録をすべて消してもいいですか？')) {
+        savedRecords = [];
+        saveRecordsToStorage();
+        renderHistoryUI();
+      }
+    });
+
+    // 印刷処理 (子どもが書いた数字だけのシンプルなカードを印刷)
+    printAllBtn.addEventListener('click', () => {
+      if (savedRecords.length === 0) {
+        alert('印刷する記録がありません。');
+        return;
+      }
+
+      printArea.innerHTML = '';
+      savedRecords.forEach(rec => {
+        const card = document.createElement('div');
+        card.className = 'print-card';
+        card.innerHTML = `<img src="${rec.img}" alt="${rec.label}">`;
+        printArea.appendChild(card);
+      });
+
+      window.print();
+    });
+
+    /* ===================================================
+       12. 設定モーダルの構築・UI連動
+       =================================================== */
+    function renderNumberCheckboxes() {
+      numberCheckboxGrid.innerHTML = '';
+      NUMBERS_DATA.forEach(item => {
+        const label = document.createElement('label');
+        label.className = 'num-check-item';
+
+        const isChecked = settings.enabledNumbers.includes(item.num);
+        label.innerHTML = `
+          <input type="checkbox" class="num-check-input" value="${item.num}" ${isChecked ? 'checked' : ''}>
+          <div class="num-check-btn">${item.num}</div>
+        `;
+
+        label.querySelector('input').addEventListener('change', (e) => {
+          const val = parseInt(e.target.value, 10);
+          if (e.target.checked) {
+            if (!settings.enabledNumbers.includes(val)) settings.enabledNumbers.push(val);
+          } else {
+            if (settings.enabledNumbers.length > 1) {
+              settings.enabledNumbers = settings.enabledNumbers.filter(n => n !== val);
+            } else {
+              e.target.checked = true; // 最低1つは選択を維持
+            }
+          }
+          settings.enabledNumbers.sort((a, b) => a - b);
+          saveSettings();
+        });
+
+        numberCheckboxGrid.appendChild(label);
+      });
+    }
+
+    function openSettingsModal() {
+      renderNumberCheckboxes();
+      document.getElementById('setting-strictness').value = settings.strictness;
+      document.getElementById('setting-opacity').value = settings.opacity;
+      document.getElementById('setting-speed').value = settings.guideSpeed;
+      document.getElementById('setting-auto-advance').checked = settings.autoAdvance;
+      document.getElementById('setting-sound').checked = settings.soundEnabled;
+
+      settingsModal.classList.add('show');
+    }
+
+    function closeSettingsModal() {
+      settings.strictness = document.getElementById('setting-strictness').value;
+      settings.opacity = parseFloat(document.getElementById('setting-opacity').value);
+      settings.guideSpeed = document.getElementById('setting-speed').value;
+      settings.autoAdvance = document.getElementById('setting-auto-advance').checked;
+      settings.soundEnabled = document.getElementById('setting-sound').checked;
+
+      quickOpacity.value = settings.opacity;
+      saveSettings();
+      settingsModal.classList.remove('show');
+      loadNumber(currentNumIndex);
+    }
+
+    closeSettingsBtn.addEventListener('click', closeSettingsModal);
+
+    resetSettingsBtn.addEventListener('click', () => {
+      settings = { ...defaultSettings };
+      saveSettings();
+      openSettingsModal();
+    });
+
+    // ツールバーの濃さスライダー連動
+    quickOpacity.addEventListener('input', (e) => {
+      settings.opacity = parseFloat(e.target.value);
+      svgModelGroup.querySelectorAll('.model-path').forEach(path => {
+        path.setAttribute('opacity', settings.opacity);
+      });
+      saveSettings();
+    });
+
+    // カラーピッカー切り替え
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        audio.init();
+        audio.playTap();
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        settings.penColor = btn.getAttribute('data-color');
+        saveSettings();
+      });
+    });
+
+    /* ===================================================
+       13. 画面遷移 & ボタン制御
+       =================================================== */
+    startBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playTap();
+      startScreen.classList.add('hidden');
+      mainScreen.classList.remove('hidden');
+      resizeCanvas();
+      loadNumber(getEnabledIndices()[0]);
+    });
+
+    homeBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playTap();
+      mainScreen.classList.add('hidden');
+      startScreen.classList.remove('hidden');
+    });
+
+    prevNumBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playTap();
+      loadNumber(getNextEnabledIndex(currentNumIndex, -1));
+    });
+
+    nextNumBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playTap();
+      loadNumber(getNextEnabledIndex(currentNumIndex, 1));
+    });
+
+    clearBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playClear();
+      clearCanvas();
+      hideToast();
+    });
+
+    retryBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playTap();
+      celebrationModal.classList.remove('show');
+      clearCanvas();
+    });
+
+    nextStageBtn.addEventListener('click', () => {
+      audio.init();
+      audio.playTap();
+      celebrationModal.classList.remove('show');
+      loadNumber(getNextEnabledIndex(currentNumIndex, 1));
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    /* ===================================================
+       14. アプリ初期化
+       =================================================== */
+    function init() {
+      loadSettings();
+      quickOpacity.value = settings.opacity;
+      
+      // カラーボタン初期状態の同期
+      document.querySelectorAll('.color-btn').forEach(btn => {
+        if (btn.getAttribute('data-color') === settings.penColor) {
+          btn.classList.add('selected');
+        } else {
+          btn.classList.remove('selected');
+        }
+      });
+
+      animateGuide();
+    }
+
+    init();
+  </script>
+</body>
+</html>
